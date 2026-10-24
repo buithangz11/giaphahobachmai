@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gia Phả Dòng Họ Bạch</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #F8F5F0;
+      color: #2B231D;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: linear-gradient(to right, #6B1414, #8B1E1E, #6B1414);
+      color: #FEF3C7;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #D4AF37;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      flex-shrink: 0;
+      z-index: 30;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-logo {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 1px solid #D4AF37; background: #451a03;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .header-title h1 { font-size: 18px; font-weight: bold; color: #FDE68A; letter-spacing: 0.5px; display: inline-block; }
+    .header-title p { font-size: 11px; color: rgba(254, 243, 199, 0.8); }
+    .btn-edit-title {
+      background: none; border: 1px solid rgba(253, 230, 138, 0.4);
+      color: #FDE68A; font-size: 11px; padding: 2px 6px; border-radius: 4px; cursor: pointer; margin-left: 6px;
+    }
+
+    nav.tabs { display: flex; background: rgba(69, 26, 3, 0.7); padding: 4px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3); gap: 4px; }
+    nav.tabs button {
+      background: none; border: none; color: rgba(254, 243, 199, 0.8);
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: 0.2s;
+    }
+    nav.tabs button.active {
+      background: #8B1E1E; color: #FEF3C7; border: 1px solid #D4AF37; font-weight: bold;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .role-badge {
+      background: rgba(69, 26, 3, 0.9); padding: 4px 12px; border-radius: 20px;
+      border: 1px solid rgba(245, 158, 11, 0.5); font-size: 11px; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-login {
+      background: linear-gradient(to right, #D97706, #D4AF37); color: #1c1917;
+      font-weight: bold; padding: 2px 10px; border-radius: 12px; border: none; cursor: pointer; font-size: 11px;
+    }
+    .btn-action {
+      background: #047857; color: white; border: 1px solid #10B981;
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;
+    }
+    .btn-toggle-ancestors {
+      background: #78350F; color: #FEF3C7; border: 1px solid #D4AF37;
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: 0.2s;
+    }
+    .btn-toggle-ancestors:hover { background: #92400E; }
+    .btn-toggle-ancestors.active { background: #D97706; color: #1C1917; }
+
+    /* Controls bar */
+    .controls-bar {
+      background: #FDFBF7; border-bottom: 1px solid #D9CBB8; padding: 6px 16px;
+      display: flex; align-items: center; justify-content: space-between; font-size: 12px; flex-shrink: 0; z-index: 20;
+    }
+    .controls-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn-ctrl {
+      background: white; border: 1px solid #D9CBB8; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+    }
+    .btn-ctrl:hover { background: #FEF3C7; }
+
+    .branch-focus-tag {
+      background: #FEF3C7; border: 1.5px solid #F59E0B; color: #92400E;
+      padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: bold;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-reset-branch {
+      background: #8B1E1E; color: white; border: none; border-radius: 12px;
+      padding: 2px 8px; font-size: 10px; cursor: pointer; font-weight: bold; margin-left: 4px;
+    }
+
+    /* Workspace */
+    .app-workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
+
+    /* Main Tree Pane */
+    .main-tree-pane {
+      flex: 1; position: relative; height: 100%; overflow: hidden;
+      background-image: radial-gradient(#E8DFC8 1.2px, transparent 1.2px);
+      background-size: 24px 24px;
+    }
+    #treeContainer { width: 100%; height: 100%; cursor: grab; }
+    #treeContainer:active { cursor: grabbing; }
+
+    .link-path {
+      fill: none;
+      stroke: #B8860B;
+      stroke-width: 2.2px;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.85;
+    }
+
+    /* DUAL COUPLE CARD */
+    .node-card {
+      background: white; border: 2px solid #E5E7EB; border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08); font-family: sans-serif;
+      overflow: hidden; cursor: pointer; transition: 0.2s; position: relative;
+    }
+    .node-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(100, 30, 20, 0.18); border-color: #F59E0B; }
+    .node-card.focused { border-color: #D97706; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35); }
+
+    .node-top-bar {
+      background: #FFFBEB; border-bottom: 1px solid #FCD34D;
+      padding: 4px 10px; display: flex; justify-content: space-between; align-items: center; font-size: 11px;
+    }
+    .node-gen-badge {
+      font-weight: bold; color: #8B1E1E; background: #FEF3C7;
+      padding: 1px 8px; border-radius: 8px; font-size: 10px;
+    }
+
+    .couple-container { display: flex; align-items: stretch; }
+    .person-half {
+      flex: 1; padding: 8px 10px; display: flex; flex-direction: column; justify-content: center;
+    }
+    
+    .person-member {
+      background: #FFF8F8; border-right: 1.5px dashed #FCA5A5;
+    }
+    .person-member.gender-female {
+      background: #FFF1F2; border-right-color: #FDA4AF;
+    }
+    .member-name {
+      font-weight: bold; color: #991B1B; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .member-name.gender-female { color: #BE123C; }
+    .member-sub {
+      font-size: 11px; color: #991B1B; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+    }
+    .member-sub.gender-female { color: #BE123C; }
+    .member-years {
+      font-size: 11px; color: #6B7280; margin-top: 2px; font-weight: 500;
+    }
+
+    .person-spouse { background: #F0FDF4; }
+    .spouse-name {
+      font-weight: bold; color: #047857; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .spouse-sub {
+      font-size: 11px; color: #047857; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+    }
+    .spouse-years {
+      font-size: 11px; color: #6B7280; margin-top: 2px; font-weight: 500;
+    }
+
+    .node-bottom-actions {
+      display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;
+      background: #F9FAFB; border-top: 1px solid #F3F4F6;
+    }
+    .btn-node {
+      font-size: 11px; padding: 2px 7px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; font-weight: 500;
+    }
+    .btn-filter-branch {
+      background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;
+      display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: bold;
+    }
+    .btn-filter-branch:hover { background: #FDE68A; }
+    .btn-node-add { background: #ECFDF5; color: #047857; border-color: #A7F3D0; }
+    .btn-node-edit { background: #F3F4F6; color: #374151; border-color: #D1D5DB; }
+    .btn-node-del { background: #FEF2F2; color: #DC2626; border-color: #FECACA; }
+
+    /* Side Panel */
+    .ancestor-side-panel {
+      width: 0; opacity: 0; pointer-events: none;
+      background: #FAF7F2; border-left: 2px solid #D4AF37;
+      display: flex; flex-direction: column; overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: -4px 0 15px rgba(0,0,0,0.08);
+      position: relative; z-index: 25;
+    }
+    .ancestor-side-panel.open {
+      width: 460px; opacity: 1; pointer-events: auto;
+    }
+    @media (max-width: 900px) {
+      .ancestor-side-panel.open { width: 100%; position: absolute; right: 0; top: 0; bottom: 0; }
+    }
+
+    .side-panel-header {
+      background: #78350F; color: #FEF3C7; padding: 12px 16px;
+      display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #D4AF37;
+    }
+    .side-panel-header h3 { font-size: 14px; font-weight: bold; }
+    .side-panel-body {
+      flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 16px;
+    }
+
+    .branch-block {
+      background: white; border-radius: 10px; border: 1.5px solid #E5E7EB;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.04); overflow: hidden;
+    }
+    .branch-block.paternal { border-top: 4px solid #1D4ED8; }
+    .branch-block.maternal { border-top: 4px solid #059669; }
+
+    .branch-header {
+      padding: 8px 12px; background: #F9FAFB; border-bottom: 1px solid #E5E7EB;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .branch-title { font-size: 13px; font-weight: bold; color: #1F2937; }
+    .branch-content { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+    .pedigree-row { display: flex; gap: 8px; justify-content: center; position: relative; }
+    .pedigree-card {
+      flex: 1; background: #FFF8F8; border: 1.5px solid #FECDD3; border-radius: 8px;
+      padding: 8px; text-align: center; cursor: pointer; transition: 0.2s; position: relative;
+    }
+    .pedigree-card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(153, 27, 27, 0.15); border-color: #F87171; }
+    .pedigree-card.female { background: #F0FDF4; border-color: #A7F3D0; }
+    .pedigree-card.female:hover { box-shadow: 0 4px 10px rgba(4, 120, 87, 0.15); border-color: #34D399; }
+    .pedigree-role { font-size: 10px; font-weight: bold; color: #991B1B; margin-bottom: 2px; }
+    .pedigree-role.female { color: #047857; }
+    .pedigree-name { font-size: 13px; font-weight: bold; color: #1F2937; }
+    .pedigree-info { font-size: 10px; color: #6B7280; margin-top: 2px; }
+
+    /* Thẻ con của Cụ Cố trong cột Tiên Tổ */
+    .ancestor-child-card {
+      border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px;
+      display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;
+    }
+    .ancestor-child-card:hover { background: #FEF3C7; border-color: #F59E0B; transform: translateX(2px); }
+    .ancestor-child-card.is-main { background: #FEF9C3; border: 1.5px solid #CA8A04; }
+
+    body.role-viewer .admin-only { display: none !important; }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal-box {
+      background: white; border-radius: 12px; width: 90%; max-width: 560px;
+      padding: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; font-family: sans-serif;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #E5E7EB; padding-bottom: 10px; margin-bottom: 14px; }
+    .modal-header h3 { font-size: 16px; color: #8B1E1E; }
+    .btn-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #9CA3AF; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 6px 10px; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 12px;
+    }
+    .form-row { display: flex; gap: 8px; }
+    .form-row > div { flex: 1; }
+
+    .gender-radio-group {
+      display: flex; gap: 16px; align-items: center; background: #FEF3C7;
+      padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #FCD34D;
+    }
+    .gender-radio-label {
+      font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px;
+    }
+
+    /* Tab tables */
+    .tab-pane { width: 100%; height: 100%; position: relative; overflow: hidden; display: none; }
+    .tab-pane.active { display: block; }
+    .table-container { padding: 24px; max-width: 1100px; margin: 0 auto; overflow-y: auto; height: 100%; }
+    .table-box { background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); padding: 20px; border: 1px solid #E5E7EB; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #FEF3C7; padding: 10px; text-align: left; border-bottom: 2px solid #D4AF37; }
+    td { padding: 8px 10px; border-bottom: 1px solid #E5E7EB; }
+    tr:hover td { background: #FFFBEB; }
+  </style>
+</head>
+<body class="role-viewer">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <div class="header-logo">🏛️</div>
+      <div class="header-title">
+        <div>
+          <h1 id="clanTitleText">GIA PHẢ DÒNG HỌ BẠCH</h1>
+          <button id="btnEditClanTitle" class="btn-edit-title admin-only">✏️ Sửa</button>
+        </div>
+        <p>Cây Chính Mặc Định & Xem Từng Nhánh Con Của Cụ Cố</p>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <nav class="tabs">
+      <button onclick="switchTab('tree')" id="tab-btn-tree" class="active">🌳 Cây Phả Hệ</button>
+      <button onclick="switchTab('table')" id="tab-btn-table">📋 Toàn Bộ Danh Sách</button>
+      <button onclick="switchTab('anniversary')" id="tab-btn-anniversary">🔔 Sổ Kỵ Nhật (Giỗ)</button>
+    </nav>
+
+    <!-- RIGHT TOOLS -->
+    <div class="header-right">
+      <button id="btnToggleAncestors" class="btn-toggle-ancestors active" onclick="toggleAncestorPanel()">
+        <span>📜 Tiên Tổ 2 Bên (Nội - Ngoại)</span>
+      </button>
+
+      <div class="role-badge">
+        <div id="viewerBadge" style="display: flex; align-items: center; gap: 6px;">
+          <span>👁️ Khách xem</span>
+          <button onclick="openLoginModal()" class="btn-login">🔒 Đăng nhập Admin</button>
+        </div>
+        <div id="adminBadge" style="display: none; align-items: center; gap: 8px;">
+          <span style="color: #34D399; font-weight: bold;">🛡️ Quản trị viên</span>
+          <button onclick="openChangePassModal()" style="background: none; border: none; color: #FDE68A; text-decoration: underline; cursor: pointer; font-size: 11px;">Đổi MK</button>
+          <button onclick="logoutAdmin()" style="background: #991B1B; color: white; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 10px;">Thoát</button>
+        </div>
+      </div>
+
+      <div class="admin-only" style="display: flex; gap: 6px;">
+        <button onclick="openAddMemberModal()" class="btn-action">➕ Thêm người</button>
+        <button onclick="confirmResetAll()" class="btn-ctrl" style="background: #292524; color: #FDE68A;" title="Xóa trắng để làm lại">🗑️ Làm lại</button>
+      </div>
+
+      <button onclick="exportJSON()" class="btn-ctrl" title="Xuất dữ liệu dự phòng">💾 Tải sao lưu</button>
+    </div>
+  </header>
+
+  <!-- WORKSPACE -->
+  <div class="app-workspace">
+
+    <!-- CÂY CHÍNH (MÀN HÌNH CHÍNH) -->
+    <div class="main-tree-pane">
+      <div class="controls-bar" id="treeControls">
+        <div class="controls-left">
+          <button onclick="showDefaultMainTree()" class="btn-ctrl" id="btnShowDefaultMain" style="font-weight: bold; background: #FEF3C7; border-color: #D4AF37;">
+            ⭐ Cây Chính Mặc Định (Cụ Bùi Văn Nhị)
+          </button>
+          
+          <div id="branchTagContainer" style="display: none;" class="branch-focus-tag">
+            <span>🌿 Đang xem nhánh phả hệ của: <b id="branchFocusName">...</b></span>
+            <button onclick="showDefaultMainTree()" class="btn-reset-branch" title="Quay về cây chính mặc định">✕ Về Cây Chính Cụ Nhị</button>
+          </div>
+
+          <button onclick="resetZoom()" class="btn-ctrl">🎯 Căn giữa</button>
+          <button onclick="zoomIn()" class="btn-ctrl font-bold">➕</button>
+          <button onclick="zoomOut()" class="btn-ctrl font-bold">➖</button>
+        </div>
+        <div>
+          <span style="color: #4B5563; font-size: 11px;">
+            💡 <b>Mẹo:</b> Mở bảng <b>"Tiên Tổ 2 Bên"</b> bên phải để thêm các bác/chú là con Cụ Cố và bấm xem riêng từng nhánh!
+          </span>
+        </div>
+      </div>
+
+      <div id="treeContainer"></div>
+    </div>
+
+    <!-- CÂY PHỤ BÊN CẠNH: TIÊN TỔ & DANH SÁCH CÁC CON CỦA CỤ CỐ -->
+    <aside id="ancestorPanel" class="ancestor-side-panel open">
+      <div class="side-panel-header">
+        <div>
+          <h3>📜 TIÊN TỔ 2 BÊN NỘI - NGOẠI</h3>
+          <p style="font-size: 10px; color: rgba(254, 243, 199, 0.8);">Bậc Cố Tiên Tổ & Các Nhánh Con Cháu</p>
+        </div>
+        <button onclick="toggleAncestorPanel()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">✕</button>
+      </div>
+
+      <div class="side-panel-body">
+        <!-- NHÁNH NỘI: CỤ CỐ ÔNG BÀ & CÁC CON CỦA CỤ CỐ (GỒM CỤ NHỊ VÀ CÁC ANH EM) -->
+        <div class="branch-block paternal">
+          <div class="branch-header">
+            <span class="branch-title">🏛️ Tiên Tổ Bên Nội (Dòng Họ Bạch)</span>
+            <div class="admin-only" style="display: flex; gap: 4px;">
+              <button onclick="openAddChildForAncestor('paternal')" class="btn-ctrl" style="font-size: 10px; padding: 2px 6px; background: #ECFDF5; color: #047857; font-weight: bold; border-color: #A7F3D0;">
+                ➕ Thêm con cho Cụ Cố
+              </button>
+              <button onclick="openEditAncestorLevel('paternal')" class="btn-ctrl" style="font-size: 10px; padding: 2px 6px;">✏️ Sửa Cụ Cố</button>
+            </div>
+          </div>
+          <div class="branch-content">
+            <!-- Thẻ Cụ Cố Ông & Cụ Cố Bà -->
+            <div class="pedigree-row">
+              <div class="pedigree-card" onclick="viewSingleAncestor('paternal', 'father')">
+                <div class="pedigree-role">🔴 CỤ CỐ ÔNG (NỘI)</div>
+                <div class="pedigree-name" id="anc_paternal_gf_name">Bạch Phúc Nghiêm</div>
+                <div class="pedigree-info" id="anc_paternal_gf_info">1868 - 1935</div>
+              </div>
+              <div class="pedigree-card female" onclick="viewSingleAncestor('paternal', 'mother')">
+                <div class="pedigree-role female">🟢 CỤ CỐ BÀ (NỘI)</div>
+                <div class="pedigree-name" id="anc_paternal_gm_name">Nguyễn Thị Lành</div>
+                <div class="pedigree-info" id="anc_paternal_gm_info">1872 - 1942</div>
+              </div>
+            </div>
+
+            <!-- Danh sách các người con do Cụ Cố sinh ra -->
+            <div style="margin-top: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 11px; font-weight: bold; color: #1E3A8A;">
+                  ⬇️ Các người con của Cụ Cố (Kích vào để mở cây):
+                </span>
+              </div>
+              <div id="paternalChildrenList">
+                <!-- Render động: Cụ Bùi Văn Nhị, Bùi Văn Bác, Bùi Thị Cô... -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NHÁNH NGOẠI: CỤ ÔNG NGOẠI & CỤ BÀ NGOẠI -->
+        <div class="branch-block maternal">
+          <div class="branch-header">
+            <span class="branch-title">🌸 Tiên Tổ Bên Ngoại (Nhà Cụ Bà)</span>
+            <div class="admin-only" style="display: flex; gap: 4px;">
+              <button onclick="openAddChildForAncestor('maternal')" class="btn-ctrl" style="font-size: 10px; padding: 2px 6px; background: #ECFDF5; color: #047857; font-weight: bold; border-color: #A7F3D0;">
+                ➕ Thêm con cho Cụ Ngoại
+              </button>
+              <button onclick="openEditAncestorLevel('maternal')" class="btn-ctrl" style="font-size: 10px; padding: 2px 6px;">✏️ Sửa Cụ Ngoại</button>
+            </div>
+          </div>
+          <div class="branch-content">
+            <div class="pedigree-row">
+              <div class="pedigree-card" onclick="viewSingleAncestor('maternal', 'father')">
+                <div class="pedigree-role">🔴 CỤ ÔNG NGOẠI</div>
+                <div class="pedigree-name" id="anc_maternal_gf_name">Trần Văn Quý</div>
+                <div class="pedigree-info" id="anc_maternal_gf_info">1870 - 1940</div>
+              </div>
+              <div class="pedigree-card female" onclick="viewSingleAncestor('maternal', 'mother')">
+                <div class="pedigree-role female">🟢 CỤ BÀ NGOẠI</div>
+                <div class="pedigree-name" id="anc_maternal_gm_name">Vũ Thị Sen</div>
+                <div class="pedigree-info" id="anc_maternal_gm_info">1875 - 1948</div>
+              </div>
+            </div>
+
+            <!-- Danh sách con của Cụ Ngoại -->
+            <div style="margin-top: 8px;">
+              <div style="font-size: 11px; font-weight: bold; color: #065F46; margin-bottom: 6px;">
+                ⬇️ Các người con của Cụ Ngoại:
+              </div>
+              <div id="maternalChildrenList">
+                <!-- Render động: Cụ Bùi Thị Bàn và các anh em ruột bên ngoại -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- TAB 2: TABLE -->
+  <div id="tabContentTable" class="tab-pane">
+    <div class="table-container">
+      <div class="table-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 style="font-size: 16px; color: #8B1E1E; font-weight: bold;">TOÀN BỘ DANH SÁCH THÀNH VIÊN TRONG GIA ĐÌNH</h2>
+          <button onclick="openAddMemberModal()" class="btn-action admin-only">➕ Thêm thành viên</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Đời</th>
+              <th>Thế hệ</th>
+              <th>Thành viên trong họ (Nam / Nữ)</th>
+              <th>Phối ngẫu (Vợ / Chồng)</th>
+              <th>Năm sinh / mất</th>
+              <th>Ngày giỗ</th>
+              <th style="text-align: center;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: ANNIVERSARY -->
+  <div id="tabContentAnniversary" class="tab-pane">
+    <div class="table-container" style="max-width: 800px;">
+      <div class="table-box">
+        <h2 style="font-size: 18px; color: #8B1E1E; font-weight: bold; text-align: center; margin-bottom: 16px;">SỔ KỴ NHẬT (LỊCH GIỖ TIÊN TỔ & HỌ HÀNG)</h2>
+        <div id="anniversaryList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ĐĂNG NHẬP -->
+  <div id="loginModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="max-width: 360px;">
+      <div class="modal-header">
+        <h3>🛡️ Đăng Nhập Quản Trị</h3>
+        <button onclick="closeModal('loginModal')" class="btn-close">✕</button>
+      </div>
+      <form onsubmit="handleAdminLogin(event)">
+        <div class="form-group">
+          <label>Mật khẩu quản trị:</label>
+          <input type="password" id="loginPassInput" required placeholder="Nhập mật khẩu...">
+        </div>
+        <div id="loginError" style="color: #DC2626; font-size: 11px; margin-bottom: 8px; display: none;">Mật khẩu không đúng!</div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" onclick="closeModal('loginModal')" class="btn-ctrl">Hủy</button>
+          <button type="submit" class="btn-action">Xác nhận</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL ĐỔI MK -->
+  <div id="changePassModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="max-width: 360px;">
+      <div class="modal-header">
+        <h3>🔑 Đổi Mật Khẩu Admin</h3>
+        <button onclick="closeModal('changePassModal')" class="btn-close">✕</button>
+      </div>
+      <form onsubmit="handleChangePass(event)">
+        <div class="form-group">
+          <label>Mật khẩu cũ:</label>
+          <input type="password" id="oldPassInput" required>
+        </div>
+        <div class="form-group">
+          <label>Mật khẩu mới:</label>
+          <input type="password" id="newPassInput" required minlength="4">
+        </div>
+        <div id="changePassMsg" style="font-size: 11px; margin-bottom: 8px; display: none;"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" onclick="closeModal('changePassModal')" class="btn-ctrl">Đóng</button>
+          <button type="submit" class="btn-action">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL THÊM / SỬA THÀNH VIÊN -->
+  <div id="editModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="editModalTitle">Thông Tin Thành Viên & Phối Ngẫu</h3>
+        <button onclick="closeModal('editModal')" class="btn-close">✕</button>
+      </div>
+      <form onsubmit="saveMember(event)">
+        <input type="hidden" id="formId">
+        
+        <div class="gender-radio-group">
+          <span style="font-size: 12px; font-weight: bold; color: #78350F;">Vai vế trong họ:</span>
+          <label class="gender-radio-label" style="color: #991B1B;">
+            <input type="radio" name="formGenderSelect" value="male" id="genderRadioMale" onchange="updateFormGenderUI()" checked>
+            👦 Con Trai (Cụ Ông / Chồng)
+          </label>
+          <label class="gender-radio-label" style="color: #BE123C;">
+            <input type="radio" name="formGenderSelect" value="female" id="genderRadioFemale" onchange="updateFormGenderUI()">
+            👧 Con Gái (Cụ Bà / Vợ)
+          </label>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Thuộc nhánh cha/mẹ:</label>
+            <select id="formParentId"></select>
+          </div>
+          <div class="form-group">
+            <label>Thứ bậc:</label>
+            <input type="text" id="formOrder" placeholder="Trưởng nam, Trưởng nữ, Thứ...">
+          </div>
+        </div>
+
+        <!-- KHUNG 1: THÀNH VIÊN TRONG DÒNG HỌ -->
+        <div id="memberBoxWrapper" style="background: #FFF1F2; border: 1.5px solid #FECDD3; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+          <div id="memberBoxTitle" style="font-weight: bold; color: #991B1B; font-size: 12px; margin-bottom: 6px;">
+            🔴 THÔNG TIN THÀNH VIÊN TRONG HỌ (CON TRAI / CHỒNG)
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Họ và Tên (*):</label>
+              <input type="text" id="formName" required placeholder="Ví dụ: Bùi Văn ... hoặc Bùi Thị ...">
+            </div>
+            <div class="form-group">
+              <label id="formHonorificLabel">Danh xưng / Tự hiệu:</label>
+              <input type="text" id="formHonorific" placeholder="Ví dụ: Cụ Ông, Bác Cả, Cô, Con...">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Năm sinh:</label>
+              <input type="text" id="formBirth" placeholder="1937">
+            </div>
+            <div class="form-group">
+              <label>Năm mất:</label>
+              <input type="text" id="formDeath" placeholder="2003 (để trống nếu còn sống)">
+            </div>
+            <div class="form-group">
+              <label>Ngày giỗ (ÂL):</label>
+              <input type="text" id="formAnniversary" placeholder="14 tháng 8 ÂL">
+            </div>
+          </div>
+        </div>
+
+        <!-- KHUNG 2: PHỐI NGẪU -->
+        <div id="spouseBoxWrapper" style="background: #F0FDF4; border: 1.5px solid #A7F3D0; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+          <div id="spouseBoxTitle" style="font-weight: bold; color: #047857; font-size: 12px; margin-bottom: 6px;">
+            🟢 THÔNG TIN PHỐI NGẪU (VỢ / DÂU)
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label id="formSpouseNameLabel">Họ và Tên Phối Ngẫu:</label>
+              <input type="text" id="formSpouse" placeholder="Ví dụ: Nguyễn Thị ... hoặc Trần Văn ...">
+            </div>
+            <div class="form-group">
+              <label id="formSpouseHonorificLabel">Danh xưng / Hiệu:</label>
+              <input type="text" id="formSpouseHonorific" placeholder="Ví dụ: Cụ Bà, Dâu, Rể, Thím...">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Năm sinh:</label>
+              <input type="text" id="formSpouseBirth" placeholder="1938">
+            </div>
+            <div class="form-group">
+              <label>Năm mất:</label>
+              <input type="text" id="formSpouseDeath" placeholder="2011 (để trống nếu còn sống)">
+            </div>
+            <div class="form-group">
+              <label>Ngày giỗ (ÂL):</label>
+              <input type="text" id="formSpouseAnni" placeholder="20 tháng 10 ÂL">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Mộ phần & Nơi an táng:</label>
+          <input type="text" id="formBurial" placeholder="Khu nghĩa trang dòng họ...">
+        </div>
+
+        <div class="form-group">
+          <label>Tiểu sử / Ghi chú công đức:</label>
+          <textarea id="formBio" rows="2"></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" onclick="closeModal('editModal')" class="btn-ctrl">Hủy</button>
+          <button type="submit" class="btn-action">Lưu thông tin</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL XEM CHI TIẾT & CHỌN XEM NHÁNH -->
+  <div id="viewModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="max-width: 460px; text-align: center;">
+      <div id="viewHeaderBadge" style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 8px;"></div>
+      <h3 id="viewTitleName" style="font-size: 20px; font-weight: bold; margin-bottom: 2px;"></h3>
+      <p id="viewSubHonorific" style="font-size: 12px; font-style: italic; color: #6B7280; margin-bottom: 12px;"></p>
+
+      <div style="text-align: left; font-size: 12px; border-top: 1px solid #E5E7EB; padding-top: 10px; line-height: 2;">
+        <div><b>Danh xưng / Vai vế:</b> <span id="viewRole"></span></div>
+        <div><b>Năm sinh - mất:</b> <span id="viewYears"></span></div>
+        <div><b>Ngày giỗ Âm lịch:</b> <span id="viewAnni" style="color: #8B1E1E; font-weight: bold;"></span></div>
+        <div id="viewBurialRow"><b>Mộ phần / Nơi an táng:</b> <span id="viewBurial"></span></div>
+        <div id="viewBioRow" style="margin-top: 6px; background: #F9FAFB; padding: 8px; border-radius: 6px; font-style: italic;">
+          <b>Ghi chú:</b> <span id="viewBio"></span>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; border-top: 1px solid #E5E7EB; padding-top: 12px;">
+        <button onclick="closeModal('viewModal')" class="btn-ctrl">Đóng</button>
+        <div style="display: flex; gap: 6px;">
+          <button id="viewBtnFilterBranchAction" class="btn-ctrl" style="background: #FEF3C7; border-color: #F59E0B; font-weight: bold; color: #92400E;">
+            🌿 Mở riêng cây nhánh này
+          </button>
+          <button id="viewBtnEditAction" class="btn-action admin-only">✏️ Sửa</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL SỬA CỤ CỐ / CỤ NGOẠI -->
+  <div id="editAncestorModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="ancestorFormTitle">Thông Tin Tiên Tổ</h3>
+        <button onclick="closeModal('editAncestorModal')" class="btn-close">✕</button>
+      </div>
+      <form onsubmit="saveAncestorLevel(event)">
+        <input type="hidden" id="ancBranchType">
+
+        <!-- CỤ ÔNG TIÊN TỔ -->
+        <div style="background: #FFF1F2; border: 1.5px solid #FECDD3; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+          <div style="font-weight: bold; color: #991B1B; font-size: 12px; margin-bottom: 6px;" id="ancLabelFather">
+            🔴 CỤ ÔNG TIÊN TỔ
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Họ và Tên (*):</label>
+              <input type="text" id="ancFatherName" required placeholder="Họ và tên...">
+            </div>
+            <div class="form-group">
+              <label>Danh xưng / Tự:</label>
+              <input type="text" id="ancFatherHonorific" placeholder="Ví dụ: Cụ Cố Ông, Thuần Hậu...">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Năm sinh - mất:</label>
+              <input type="text" id="ancFatherYears" placeholder="1868 - 1935">
+            </div>
+            <div class="form-group">
+              <label>Ngày giỗ (Âm lịch):</label>
+              <input type="text" id="ancFatherAnni" placeholder="10 tháng 2 ÂL">
+            </div>
+          </div>
+        </div>
+
+        <!-- CỤ BÀ TIÊN TỔ -->
+        <div style="background: #F0FDF4; border: 1.5px solid #A7F3D0; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+          <div style="font-weight: bold; color: #047857; font-size: 12px; margin-bottom: 6px;" id="ancLabelMother">
+            🟢 CỤ BÀ TIÊN TỔ
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Họ và Tên (*):</label>
+              <input type="text" id="ancMotherName" required placeholder="Họ và tên...">
+            </div>
+            <div class="form-group">
+              <label>Danh xưng / Hiệu:</label>
+              <input type="text" id="ancMotherHonorific" placeholder="Ví dụ: Cụ Cố Bà, Từ Đức...">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Năm sinh - mất:</label>
+              <input type="text" id="ancMotherYears" placeholder="1872 - 1942">
+            </div>
+            <div class="form-group">
+              <label>Ngày giỗ (Âm lịch):</label>
+              <input type="text" id="ancMotherAnni" placeholder="25 tháng 8 ÂL">
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;">
+          <button type="button" onclick="closeModal('editAncestorModal')" class="btn-ctrl">Hủy</button>
+          <button type="submit" class="btn-action">Lưu thông tin</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const KEY_MAIN_DATA = 'giapha_bach_toc_tree_v1';
+    const KEY_ANCESTORS = 'giapha_bach_toc_anc_v1';
+    const KEY_TITLE = 'giapha_bach_toc_title_v1';
+    const KEY_PASS = 'giapha_bach_toc_pass_v1';
+
+    let isAdmin = false;
+    let mainMembers = [];
+    let ancestors = {};
+    const DEFAULT_ROOT_ID = "1"; // ID của Cụ Bùi Văn Nhị (Cây chính mặc định)
+    let currentViewingRootId = DEFAULT_ROOT_ID; // Mặc định hiển thị cây từ Cụ Nhị
+
+    // Dữ liệu mẫu chuẩn: Cụ Nhị (ID 1) là cây chính, cùng với các anh/chị/em là con Cụ Cố (parentId: "ROOT_PATERNAL")
+    const defaultMainTree = [
+      // 1. CÂY CHÍNH MẶC ĐỊNH: Cụ Bùi Văn Nhị & Cụ Bùi Thị Bàn
+      {
+        id: "1",
+        name: "Bạch Văn Nhị",
+        honorific: "Cụ Ông",
+        gender: "male",
+        order: "",
+        parentId: "ROOT_PATERNAL", // Là con của Cụ Cố Bên Nội!
+        birth: "1937",
+        death: "2003",
+        anniversary: "14 tháng 8 ÂL",
+        spouse: "Bùi Thị Bàn",
+        spouseHonorific: "Cụ Bà",
+        spouseBirth: "1938",
+        spouseDeath: "2011",
+        spouseAnni: "20 tháng 10 ÂL",
+        burial: "Khu nghĩa trang dòng họ",
+        bio: "Cây chính gia đình."
+      },
+      // Các con Đời 1 của Cụ Nhị
+      {
+        id: "2",
+        name: "Bạch Văn Cư",
+        honorific: "Bác Cả",
+        gender: "male",
+        order: "Chi Trưởng (Trưởng nam)",
+        parentId: "1",
+        birth: "1960",
+        death: "",
+        anniversary: "",
+        spouse: "Xa Thị Biên",
+        spouseHonorific: "Bác Dâu",
+        spouseBirth: "1959",
+        spouseDeath: "2025",
+        spouseAnni: "15 tháng 4 ÂL",
+        burial: "Khu mộ gia tộc",
+        bio: ""
+      },
+      {
+        id: "3",
+        name: "Bạch Văn Lữ",
+        honorific: "Chú Hai",
+        gender: "male",
+        order: "Chi Thứ (Thứ nam)",
+        parentId: "1",
+        birth: "1963",
+        death: "",
+        anniversary: "",
+        spouse: "Bạch Thị Diệu",
+        spouseHonorific: "Thím",
+        spouseBirth: "1966",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: ""
+      },
+      {
+        id: "4",
+        name: "Bạch Văn Chiêu",
+        honorific: "Chú Ba",
+        gender: "male",
+        order: "Thứ 3 (Nam)",
+        parentId: "1",
+        birth: "1965",
+        death: "",
+        anniversary: "",
+        spouse: "Bùi Thị ...",
+        spouseHonorific: "Thím",
+        spouseBirth: "",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: ""
+      },
+
+      // Con cháu của Bác Cư (Đời 2 & 3 tính từ Cụ Nhị)
+      {
+        id: "6",
+        name: "Bạch Văn Khương",
+        honorific: "Con",
+        gender: "male",
+        order: "Trưởng Nam",
+        parentId: "2",
+        birth: "1984",
+        death: "",
+        anniversary: "",
+        spouse: "Lê Thị Ngọc",
+        spouseHonorific: "Dâu",
+        spouseBirth: "1988",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: ""
+      },
+      {
+        id: "7",
+        name: "Bạch Hoàng Anh",
+        honorific: "Cháu",
+        gender: "male",
+        order: "Chắt đích tôn",
+        parentId: "6",
+        birth: "2016",
+        death: "",
+        anniversary: "",
+        spouse: "",
+        spouseHonorific: "",
+        spouseBirth: "",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: ""
+      },
+      {
+        id: "8",
+        name: "Bạch Văn Khánh",
+        honorific: "Con",
+        gender: "male",
+        order: "Thứ nam",
+        parentId: "2",
+        birth: "1987",
+        death: "",
+        anniversary: "",
+        spouse: "Phùng Thị Hà",
+        spouseHonorific: "Dâu",
+        spouseBirth: "1993",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: ""
+      },
+
+      // Con cháu của Chú Lữ
+      {
+        id: "11",
+        name: "Bạch Văn Thắng",
+        honorific: "Cháu",
+        gender: "male",
+        order: "Trưởng Nam",
+        parentId: "3",
+        birth: "1987",
+        death: "",
+        anniversary: "",
+        spouse: "Bùi Thị Hiếu",
+        spouseHonorific: "Dâu",
+        spouseBirth: "1987",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: ""
+      },
+      {
+        id: "12",
+        name: "Bạch Thu Phương",
+        honorific: "Con",
+        gender: "female",
+        order: "Trưởng nữ",
+        parentId: "11",
+        birth: "2012",
+        death: "",
+        anniversary: "",
+        spouse: "",
+        spouseHonorific: "",
+        spouseBirth: "",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: ""
+      },
+
+      // 2. CÁC NGƯỜI CON KHÁC CỦA CỤ CỐ ÔNG BÀ (ANH EM RUỘT CỦA CỤ NHỊ)
+      {
+        id: "anc_child_1",
+        name: "Bạch Văn Nhất",
+        honorific: "Bác Cả Của Cụ Nhị",
+        gender: "male",
+        order: "Bác Trưởng",
+        parentId: "ROOT_PATERNAL", // Con của Cụ Cố Bên Nội!
+        birth: "1932",
+        death: "2010",
+        anniversary: "05 tháng 6 ÂL",
+        spouse: "Nguyễn Thị Đào",
+        spouseHonorific: "Bác Gái",
+        spouseBirth: "1935",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: "Nhánh của Bác Nhất (anh trai Cụ Nhị)."
+      },
+      {
+        id: "anc_subchild_1",
+        name: "Bạch Văn Hùng",
+        honorific: "Con Bác Nhất",
+        gender: "male",
+        order: "Trưởng nam",
+        parentId: "anc_child_1",
+        birth: "1962",
+        death: "",
+        anniversary: "",
+        spouse: "Trần Thị Mai",
+        spouseHonorific: "Dâu",
+        spouseBirth: "1965",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: ""
+      },
+      {
+        id: "anc_child_2",
+        name: "Bạch Thị Lan",
+        honorific: "Bà Cô",
+        gender: "female",
+        order: "Cô Ba",
+        parentId: "ROOT_PATERNAL", // Con gái của Cụ Cố Bên Nội!
+        birth: "1942",
+        death: "",
+        anniversary: "",
+        spouse: "Lê Văn Tự",
+        spouseHonorific: "Dượng",
+        spouseBirth: "1940",
+        spouseDeath: "",
+        spouseAnni: "",
+        burial: "",
+        bio: "Nhánh của Bà Cô Lan (em gái Cụ Nhị)."
+      }
+    ];
+
+    // Thông tin 2 cặp Tiên Tổ
+    const defaultAncestors = {
+      paternal: {
+        father: { name: "Bạch Phúc Nghiêm", honorific: "Thuần Hậu", years: "1868 - 1935", anniversary: "10 tháng 2 ÂL", role: "Cụ Cố Ông (Bên Nội)" },
+        mother: { name: "Nguyễn Thị Lành", honorific: "Từ Đức", years: "1872 - 1942", anniversary: "18 tháng 7 ÂL", role: "Cụ Cố Bà (Bên Nội)" }
+      },
+      maternal: {
+        father: { name: "Trần Văn Quý", honorific: "Phúc Quý", years: "1870 - 1940", anniversary: "04 tháng 5 ÂL", role: "Cụ Ông Ngoại" },
+        mother: { name: "Vũ Thị Sen", honorific: "Hiền Thục", years: "1875 - 1948", anniversary: "22 tháng 9 ÂL", role: "Cụ Bà Ngoại" }
+      }
+    };
+
+    function loadData() {
+      const savedMain = localStorage.getItem(KEY_MAIN_DATA);
+      mainMembers = savedMain ? JSON.parse(savedMain) : [...defaultMainTree];
+
+      const savedAnc = localStorage.getItem(KEY_ANCESTORS);
+      ancestors = savedAnc ? JSON.parse(savedAnc) : JSON.parse(JSON.stringify(defaultAncestors));
+
+      const title = localStorage.getItem(KEY_TITLE);
+      if (title) document.getElementById('clanTitleText').textContent = title;
+
+      updateAncestorUI();
+    }
+
+    function saveData() {
+      localStorage.setItem(KEY_MAIN_DATA, JSON.stringify(mainMembers));
+      localStorage.setItem(KEY_ANCESTORS, JSON.stringify(ancestors));
+    }
+
+    function getPass() { return localStorage.getItem(KEY_PASS) || 'admin123'; }
+
+    function applyRole() {
+      document.body.className = isAdmin ? 'role-admin' : 'role-viewer';
+      document.getElementById('viewerBadge').style.display = isAdmin ? 'none' : 'flex';
+      document.getElementById('adminBadge').style.display = isAdmin ? 'flex' : 'none';
+      renderMainTree();
+      renderTable();
+      renderAnniversaries();
+      updateAncestorUI();
+    }
+
+    function toggleAncestorPanel() {
+      const panel = document.getElementById('ancestorPanel');
+      const btn = document.getElementById('btnToggleAncestors');
+      panel.classList.toggle('open');
+      btn.classList.toggle('active');
+      setTimeout(() => resetZoom(), 300);
+    }
+
+    // TÍNH TOÁN ĐỜI TỰ ĐỘNG TÍNH TỪ GỐC ĐANG XEM (ROOT)
+    function getMemberGeneration(memberId, currentRootId) {
+      if (memberId === currentRootId) return 0; // Gốc đang xem là "Cụ Ông - Cụ Bà"
+      let count = 0;
+      let curr = mainMembers.find(x => x.id === memberId);
+      let visited = new Set();
+      while (curr && curr.parentId && curr.id !== currentRootId && !visited.has(curr.id)) {
+        visited.add(curr.id);
+        count++;
+        curr = mainMembers.find(x => x.id === curr.parentId);
+      }
+      return count;
+    }
+
+    // THUẬT TOÁN LỌC NHÁNH ĐỂ VẼ CÂY
+    function getSubtreeMembers(rootId) {
+      const resultIds = new Set([rootId]);
+      let addedNew = true;
+      while (addedNew) {
+        addedNew = false;
+        mainMembers.forEach(m => {
+          if (m.parentId && resultIds.has(m.parentId) && !resultIds.has(m.id)) {
+            resultIds.add(m.id);
+            addedNew = true;
+          }
+        });
+      }
+      return mainMembers.filter(m => resultIds.has(m.id)).map(m => {
+        if (m.id === rootId) {
+          return { ...m, parentId: "" }; // Biến người này thành gốc của cây đang vẽ
+        }
+        return m;
+      });
+    }
+
+    // CHUYỂN SANG XEM CÂY CỦA BẤT KỲ NGƯỜI NÀO
+    function switchToBranch(id) {
+      const target = mainMembers.find(x => x.id === id);
+      if (!target) return;
+      currentViewingRootId = id;
+
+      const tagContainer = document.getElementById('branchTagContainer');
+      const focusNameEl = document.getElementById('branchFocusName');
+      const btnShowDefaultMain = document.getElementById('btnShowDefaultMain');
+
+      if (id === DEFAULT_ROOT_ID) {
+        tagContainer.style.display = 'none';
+        btnShowDefaultMain.style.background = '#FEF3C7';
+      } else {
+        tagContainer.style.display = 'flex';
+        focusNameEl.textContent = `${target.name} (${target.honorific || 'Nhánh riêng'})`;
+        btnShowDefaultMain.style.background = 'white';
+      }
+
+      renderMainTree();
+      updateAncestorUI();
+      closeModal('viewModal');
+    }
+
+    function showDefaultMainTree() {
+      switchToBranch(DEFAULT_ROOT_ID);
+    }
+
+    // CẬP NHẬT GIAO DIỆN CỘT TIÊN TỔ & DANH SÁCH CON CỦA CỤ CỐ
+    function updateAncestorUI() {
+      document.getElementById('anc_paternal_gf_name').textContent = ancestors.paternal.father.name;
+      document.getElementById('anc_paternal_gf_info').textContent = ancestors.paternal.father.years;
+      document.getElementById('anc_paternal_gm_name').textContent = ancestors.paternal.mother.name;
+      document.getElementById('anc_paternal_gm_info').textContent = ancestors.paternal.mother.years;
+
+      document.getElementById('anc_maternal_gf_name').textContent = ancestors.maternal.father.name;
+      document.getElementById('anc_maternal_gf_info').textContent = ancestors.maternal.father.years;
+      document.getElementById('anc_maternal_gm_name').textContent = ancestors.maternal.mother.name;
+      document.getElementById('anc_maternal_gm_info').textContent = ancestors.maternal.mother.years;
+
+      // Render danh sách con của Cụ Cố Bên Nội (parentId === "ROOT_PATERNAL")
+      const pList = document.getElementById('paternalChildrenList');
+      pList.innerHTML = '';
+      const paternalChildren = mainMembers.filter(m => m.parentId === "ROOT_PATERNAL" || m.id === "1");
+      
+      paternalChildren.forEach(child => {
+        const isCurrentActive = currentViewingRootId === child.id;
+        const subCount = mainMembers.filter(c => c.parentId === child.id).length;
+        const isMain = child.id === DEFAULT_ROOT_ID;
+
+        pList.innerHTML += `
+          <div class="ancestor-child-card ${isCurrentActive ? 'is-main' : ''}" onclick="switchToBranch('${child.id}')">
+            <div>
+              <div style="font-weight: bold; font-size: 13px; color: ${child.gender === 'female' ? '#BE123C' : '#991B1B'};">
+                ${child.gender === 'female' ? '🌸' : '🔴'} ${child.name} ${isMain ? '<span style="font-size: 9px; background: #FEF08A; color: #854D0E; padding: 1px 5px; border-radius: 4px; font-weight: bold;">(Cây Chính)</span>' : ''}
+              </div>
+              <div style="font-size: 10px; color: #6B7280;">
+                ${child.honorific || 'Con cụ cố'} • ${child.spouse ? `Vợ/Chồng: ${child.spouse}` : 'Chưa rõ phối ngẫu'}
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 10px; font-weight: bold; color: #D97706; background: #FEF3C7; padding: 2px 6px; border-radius: 6px;">
+                ${isCurrentActive ? '👉 Đang xem' : 'Mở cây ➜'}
+              </span>
+              <div style="font-size: 9px; color: #9CA3AF; margin-top: 2px;">${subCount} nhánh con</div>
+            </div>
+          </div>
+        `;
+      });
+
+      // Render danh sách con bên Ngoại (parentId === "ROOT_MATERNAL")
+      const mList = document.getElementById('maternalChildrenList');
+      mList.innerHTML = '';
+      const maternalChildren = mainMembers.filter(m => m.parentId === "ROOT_MATERNAL");
+      if (maternalChildren.length === 0) {
+        mList.innerHTML = `
+          <div class="ancestor-child-card is-main" onclick="switchToBranch('1')">
+            <div>
+              <div style="font-weight: bold; font-size: 13px; color: #047857;">🟢 Bùi Thị Bàn (Cụ Bà - Cây Chính)</div>
+              <div style="font-size: 10px; color: #6B7280;">Con gái Cụ Ngoại • Xuất giá về họ Bùi</div>
+            </div>
+            <span style="font-size: 10px; font-weight: bold; color: #047857; background: #DCFCE7; padding: 2px 6px; border-radius: 6px;">
+              ${currentViewingRootId === '1' ? '👉 Đang xem' : 'Mở cây ➜'}
+            </span>
+          </div>
+        `;
+      } else {
+        maternalChildren.forEach(child => {
+          const isCurrentActive = currentViewingRootId === child.id;
+          mList.innerHTML += `
+            <div class="ancestor-child-card ${isCurrentActive ? 'is-main' : ''}" onclick="switchToBranch('${child.id}')">
+              <div>
+                <div style="font-weight: bold; font-size: 13px; color: #047857;">${child.name}</div>
+                <div style="font-size: 10px; color: #6B7280;">${child.honorific || 'Con cụ ngoại'}</div>
+              </div>
+              <span style="font-size: 10px; font-weight: bold; color: #047857; background: #DCFCE7; padding: 2px 6px; border-radius: 6px;">Mở cây ➜</span>
+            </div>
+          `;
+        });
+      }
+    }
+
+    // THÊM CON TRỰC TIẾP CHO CỤ CỐ ÔNG BÀ
+    function openAddChildForAncestor(branch) {
+      if (!isAdmin) return openLoginModal();
+      openAddMemberModal();
+      const parentTag = branch === 'paternal' ? "ROOT_PATERNAL" : "ROOT_MATERNAL";
+      document.getElementById('formParentId').value = parentTag;
+      document.getElementById('editModalTitle').textContent = branch === 'paternal' ? "Thêm Người Con Của Cụ Cố (Anh/Em của Cụ Nhị)" : "Thêm Người Con Bên Ngoại (Anh/Em của Cụ Bàn)";
+      document.getElementById('formOrder').value = branch === 'paternal' ? "Bác / Chú / Cô" : "Bác / Cậu / Dì";
+      document.getElementById('formHonorific').value = branch === 'paternal' ? "Bác" : "Cậu";
+    }
+
+    // VẼ CÂY D3 TRÊN MÀN HÌNH CHÍNH
+    let d3Svg, d3Zoom, d3G;
+    function renderMainTree() {
+      const box = document.getElementById('treeContainer');
+      box.innerHTML = '';
+
+      // Luôn vẽ cây từ Root đang được chọn (Mặc định là Cụ Nhị, hoặc bất kỳ người con nào của Cụ Cố khi bấm vào)
+      const displayList = getSubtreeMembers(currentViewingRootId);
+
+      if (!displayList || displayList.length === 0) {
+        box.innerHTML = '<div style="text-align: center; margin-top: 100px;"><h3>Không có dữ liệu trong nhánh này</h3></div>';
+        return;
+      }
+
+      let root;
+      try {
+        const stratify = d3.stratify().id(d => d.id).parentId(d => d.parentId || null);
+        root = stratify(displayList);
+      } catch(err) {
+        const adapted = displayList.map(m => (!m.parentId ? { ...m, parentId: '__root__' } : m));
+        adapted.push({ id: '__root__', name: 'Gốc', parentId: '' });
+        root = d3.stratify().id(d => d.id).parentId(d => d.parentId)(adapted);
+      }
+
+      const nodeW = 300, nodeH = 122;
+      const verticalGap = 75;
+
+      const treeLayout = d3.tree()
+        .nodeSize([nodeW + 45, nodeH + verticalGap])
+        .separation((a, b) => a.parent === b.parent ? 1.05 : 1.25);
+
+      treeLayout(root);
+
+      d3Svg = d3.select(box).append("svg").attr("width", "100%").attr("height", "100%");
+      d3G = d3Svg.append("g");
+
+      d3Zoom = d3.zoom().scaleExtent([0.15, 2.5]).on("zoom", e => d3G.attr("transform", e.transform));
+      d3Svg.call(d3Zoom);
+
+      function drawOrthogonalLink(d) {
+        const sx = d.source.x;
+        const sy = d.source.y + nodeH;
+        const tx = d.target.x;
+        const ty = d.target.y;
+        const midY = sy + (ty - sy) / 2;
+
+        return `M ${sx} ${sy}
+                L ${sx} ${midY}
+                L ${tx} ${midY}
+                L ${tx} ${ty}`;
+      }
+
+      d3G.selectAll(".link-path")
+        .data(root.links().filter(l => l.source.id !== '__root__'))
+        .enter().append("path")
+        .attr("class", "link-path")
+        .attr("d", drawOrthogonalLink);
+
+      const nodes = d3G.selectAll(".node")
+        .data(root.descendants().filter(d => d.id !== '__root__'))
+        .enter().append("g").attr("transform", d => `translate(${d.x - nodeW/2},${d.y})`);
+
+      nodes.append("foreignObject").attr("width", nodeW).attr("height", nodeH + 32)
+        .html(d => {
+          const m = d.data;
+          const hasSpouse = !!m.spouse;
+          const isFemale = m.gender === 'female';
+          const isCurrentRoot = m.id === currentViewingRootId;
+
+          // Tính đời tự động so với gốc đang hiển thị
+          const genNumber = getMemberGeneration(m.id, currentViewingRootId);
+
+          const memberDefaultTitle = isFemale ? 'Con gái' : 'Con trai';
+          const memberTitle = m.honorific && m.honorific.trim() !== '' ? m.honorific : memberDefaultTitle;
+
+          const spouseDefaultTitle = isFemale ? 'Rể (Chồng)' : 'Dâu (Vợ)';
+          const spouseTitle = m.spouseHonorific && m.spouseHonorific.trim() !== '' ? m.spouseHonorific : spouseDefaultTitle;
+
+          const childrenCount = mainMembers.filter(c => c.parentId === m.id).length;
+
+          return `
+            <div class="node-card ${isCurrentRoot ? 'focused' : ''}" onclick="clickMainTreeNode('${m.id}')">
+              <div class="node-top-bar">
+                <span class="node-gen-badge">${isCurrentRoot ? "Cụ Ông - Cụ Bà" : "Đời " + genNumber + " • " + (m.order || (isFemale ? "Con gái" : "Con trai"))}</span>
+                <span style="font-size: 10px; color: #6B7280;">Mộ: ${m.burial ? 'Có' : '—'}</span>
+              </div>
+
+              <div class="couple-container">
+                <!-- THÀNH VIÊN TRONG HỌ -->
+                <div class="person-half person-member ${isFemale ? 'gender-female' : ''}" style="${!hasSpouse ? 'border-right: none;' : ''}">
+                  <div class="member-name ${isFemale ? 'gender-female' : ''}">${isFemale ? '🌸 ' : '🔴 '}${m.name}</div>
+                  <div class="member-sub ${isFemale ? 'gender-female' : ''}">${memberTitle}</div>
+                  <div class="member-years">${m.birth || '?'} - ${m.death || 'Sống'}</div>
+                </div>
+
+                <!-- PHỐI NGẪU -->
+                ${hasSpouse ? `
+                  <div class="person-half person-spouse">
+                    <div class="spouse-name">${m.spouse}</div>
+                    <div class="spouse-sub">${spouseTitle}</div>
+                    <div class="spouse-years">${m.spouseBirth || '?'} - ${m.spouseDeath || 'Sống'}</div>
+                  </div>
+                ` : `
+                  <div class="person-half" style="background: #F9FAFB; display: flex; align-items: center; justify-content: center; color: #9CA3AF; font-size: 11px; font-style: italic;">
+                    Chưa cập nhật phối ngẫu
+                  </div>
+                `}
+              </div>
+
+              <div class="node-bottom-actions" onclick="event.stopPropagation()">
+                ${childrenCount > 0 ? `
+                  <button class="btn-node btn-filter-branch" onclick="switchToBranch('${m.id}')" title="Xem riêng nhánh này">
+                    🌿 Nhánh con (${childrenCount})
+                  </button>
+                ` : `
+                  <span style="font-size: 10px; color: #9CA3AF; font-style: italic; padding-left: 4px;">Chưa có con</span>
+                `}
+
+                <div class="admin-only" style="display: flex; gap: 4px;">
+                  <button class="btn-node btn-node-add" onclick="addChild('${m.id}')" title="Thêm con">➕ Con</button>
+                  <button class="btn-node btn-node-edit" onclick="openEditMember('${m.id}')" title="Sửa">✏️</button>
+                  <button class="btn-node btn-node-del" onclick="deleteMember('${m.id}')" title="Xóa">🗑️</button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+      resetZoom();
+    }
+
+    function clickMainTreeNode(id) {
+      const m = mainMembers.find(x => x.id === id);
+      if (!m) return;
+      const isFemale = m.gender === 'female';
+      const isCurrentRoot = m.id === currentViewingRootId;
+      const genNumber = getMemberGeneration(m.id, currentViewingRootId);
+
+      const hTitle = m.honorific || (isFemale ? 'Con gái' : 'Con trai');
+      const wTitle = m.spouseHonorific || (isFemale ? 'Rể (Chồng)' : 'Dâu (Vợ)');
+
+      const badge = document.getElementById('viewHeaderBadge');
+      if (isCurrentRoot) {
+        badge.textContent = "Cụ Ông - Cụ Bà";
+      } else {
+        badge.textContent = `Đời ${genNumber} • ${m.order || (isFemale ? "Con gái" : "Con trai")}`;
+      }
+      badge.style.background = isFemale ? '#FFE4E6' : '#FEF3C7';
+      badge.style.color = isFemale ? '#BE123C' : '#8B1E1E';
+
+      const title = document.getElementById('viewTitleName');
+      title.innerHTML = `<span style="color: ${isFemale ? '#BE123C' : '#991B1B'};">${m.name}</span> & <span style="color: #047857;">${m.spouse || 'Chưa rõ'}</span>`;
+
+      document.getElementById('viewSubHonorific').textContent = `${hTitle} - ${wTitle}`;
+      document.getElementById('viewRole').textContent = isCurrentRoot ? "Bậc khởi đầu cây đang xem" : `Thế hệ thứ ${genNumber}`;
+      document.getElementById('viewYears').innerHTML = `Trong họ: ${m.birth || '?'} - ${m.death || 'Sống'} | Phối ngẫu: ${m.spouseBirth || '?'} - ${m.spouseDeath || 'Sống'}`;
+      document.getElementById('viewAnni').innerHTML = `Giỗ: ${m.anniversary || '—'} | Phối ngẫu giỗ: ${m.spouseAnni || '—'}`;
+      document.getElementById('viewBurialRow').style.display = 'block';
+      document.getElementById('viewBurial').textContent = m.burial || 'Khu nghĩa trang dòng họ';
+      document.getElementById('viewBioRow').style.display = 'block';
+      document.getElementById('viewBio').textContent = m.bio || 'Chưa có thông tin thêm.';
+
+      const btnFilterBranch = document.getElementById('viewBtnFilterBranchAction');
+      const hasChildren = mainMembers.some(c => c.parentId === m.id);
+      if (hasChildren && !isCurrentRoot) {
+        btnFilterBranch.style.display = 'block';
+        btnFilterBranch.textContent = `🌿 Mở riêng cây nhánh của: ${m.name}`;
+        btnFilterBranch.onclick = () => switchToBranch(m.id);
+      } else {
+        btnFilterBranch.style.display = 'none';
+      }
+
+      document.getElementById('viewBtnEditAction').onclick = () => {
+        closeModal('viewModal');
+        openEditMember(m.id);
+      };
+
+      openModal('viewModal');
+    }
+
+    function viewSingleAncestor(branch, personType) {
+      const data = branch === 'paternal' ? ancestors.paternal : ancestors.maternal;
+      const person = personType === 'father' ? data.father : data.mother;
+      const isFather = personType === 'father';
+
+      const badge = document.getElementById('viewHeaderBadge');
+      badge.textContent = person.role;
+      badge.style.background = isFather ? '#FFE4E6' : '#DCFCE7';
+      badge.style.color = isFather ? '#991B1B' : '#047857';
+
+      const title = document.getElementById('viewTitleName');
+      title.textContent = person.name;
+      title.style.color = isFather ? '#991B1B' : '#047857';
+
+      document.getElementById('viewSubHonorific').textContent = person.honorific ? `Tự/Hiệu: ${person.honorific}` : '';
+      document.getElementById('viewRole').textContent = `${person.role} (${branch === 'paternal' ? 'Nhánh Bên Nội' : 'Nhánh Bên Ngoại'})`;
+      document.getElementById('viewYears').textContent = person.years || 'Chưa cập nhật';
+      document.getElementById('viewAnni').textContent = person.anniversary || 'Chưa rõ';
+      document.getElementById('viewBurialRow').style.display = 'block';
+      document.getElementById('viewBurial').textContent = branch === 'paternal' ? 'Khu lăng mộ Tiên Tổ Bên Nội' : 'Khu mộ Tiên Tổ Bên Ngoại';
+      document.getElementById('viewBioRow').style.display = 'block';
+      document.getElementById('viewBio').textContent = 'Bậc tiền nhân sinh thành nguồn cội dòng họ.';
+
+      document.getElementById('viewBtnFilterBranchAction').style.display = 'none';
+      document.getElementById('viewBtnEditAction').onclick = () => {
+        closeModal('viewModal');
+        openEditAncestorLevel(branch);
+      };
+
+      openModal('viewModal');
+    }
+
+    function resetZoom() {
+      if (!d3Svg || !d3Zoom) return;
+      const w = document.getElementById('treeContainer').clientWidth || 1000;
+      d3Svg.transition().duration(400).call(d3Zoom.transform, d3.zoomIdentity.translate(w/2, 60).scale(0.85));
+    }
+    function zoomIn() { d3Svg && d3Svg.transition().call(d3Zoom.scaleBy, 1.25); }
+    function zoomOut() { d3Svg && d3Svg.transition().call(d3Zoom.scaleBy, 0.8); }
+
+    function populateParentSelect(curId) {
+      const s = document.getElementById('formParentId');
+      s.innerHTML = `
+        <option value="ROOT_PATERNAL">🏛️ Là con của Cụ Cố Bên Nội (Cùng hàng Cụ Nhị)</option>
+        <option value="ROOT_MATERNAL">🌸 Là con của Cụ Ngoại (Cùng hàng Cụ Bàn)</option>
+      `;
+      mainMembers.forEach(m => {
+        if (m.id !== curId) {
+          s.innerHTML += `<option value="${m.id}">Thuộc nhánh: ${m.name} & ${m.spouse || '...'}</option>`;
+        }
+      });
+    }
+
+    function updateFormGenderUI() {
+      const isFemale = document.getElementById('genderRadioFemale').checked;
+      const memberBoxWrapper = document.getElementById('memberBoxWrapper');
+      const memberBoxTitle = document.getElementById('memberBoxTitle');
+      const spouseBoxTitle = document.getElementById('spouseBoxTitle');
+      const formHonorific = document.getElementById('formHonorific');
+      const formSpouseHonorific = document.getElementById('formSpouseHonorific');
+
+      if (isFemale) {
+        memberBoxWrapper.style.background = '#FFF1F2';
+        memberBoxWrapper.style.borderColor = '#FDA4AF';
+        memberBoxTitle.textContent = "🌸 THÀNH VIÊN TRONG HỌ (CON GÁI / CỤ BÀ)";
+        memberBoxTitle.style.color = "#BE123C";
+        spouseBoxTitle.textContent = "🟢 PHỐI NGẪU (CHỒNG / RỂ)";
+        if (formHonorific.value === 'Con trai' || formHonorific.value === 'Cụ Ông' || formHonorific.value === '') {
+          formHonorific.value = 'Con gái';
+        }
+        if (formSpouseHonorific.value === 'Dâu' || formSpouseHonorific.value === 'Cụ Bà' || formSpouseHonorific.value === '') {
+          formSpouseHonorific.value = 'Rể';
+        }
+      } else {
+        memberBoxWrapper.style.background = '#FFF8F8';
+        memberBoxWrapper.style.borderColor = '#FECDD3';
+        memberBoxTitle.textContent = "🔴 THÀNH VIÊN TRONG HỌ (CON TRAI / CỤ ÔNG)";
+        memberBoxTitle.style.color = "#991B1B";
+        spouseBoxTitle.textContent = "🟢 PHỐI NGẪU (VỢ / DÂU)";
+        if (formHonorific.value === 'Con gái' || formHonorific.value === 'Cụ Bà' || formHonorific.value === '') {
+          formHonorific.value = 'Con trai';
+        }
+        if (formSpouseHonorific.value === 'Rể' || formSpouseHonorific.value === 'Cụ Ông' || formSpouseHonorific.value === '') {
+          formSpouseHonorific.value = 'Dâu';
+        }
+      }
+    }
+
+    function openAddMemberModal() {
+      if (!isAdmin) return openLoginModal();
+      document.getElementById('editModalTitle').textContent = "Thêm Thành Viên Mới";
+      document.getElementById('formId').value = "";
+      populateParentSelect();
+
+      document.getElementById('genderRadioMale').checked = true;
+      updateFormGenderUI();
+
+      document.getElementById('formName').value = "";
+      document.getElementById('formHonorific').value = "Con trai";
+      document.getElementById('formOrder').value = "Trưởng nam";
+      document.getElementById('formBirth').value = "";
+      document.getElementById('formDeath').value = "";
+      document.getElementById('formAnniversary').value = "";
+
+      document.getElementById('formSpouse').value = "";
+      document.getElementById('formSpouseHonorific').value = "Dâu";
+      document.getElementById('formSpouseBirth').value = "";
+      document.getElementById('formSpouseDeath').value = "";
+      document.getElementById('formSpouseAnni').value = "";
+
+      document.getElementById('formBurial').value = "";
+      document.getElementById('formBio').value = "";
+      openModal('editModal');
+    }
+
+    function addChild(pId) {
+      if (!isAdmin) return openLoginModal();
+      openAddMemberModal();
+      document.getElementById('formParentId').value = pId;
+      const p = mainMembers.find(m => m.id === pId);
+      if (p) {
+        document.getElementById('editModalTitle').textContent = `Thêm Con Cho: ${p.name}`;
+      }
+    }
+
+    function openEditMember(id) {
+      if (!isAdmin) return openLoginModal();
+      const m = mainMembers.find(x => x.id === id);
+      if (!m) return;
+      document.getElementById('editModalTitle').textContent = "Chỉnh Sửa Thông Tin Thành Viên";
+      document.getElementById('formId').value = m.id;
+      populateParentSelect(m.id);
+
+      if (m.gender === 'female') {
+        document.getElementById('genderRadioFemale').checked = true;
+      } else {
+        document.getElementById('genderRadioMale').checked = true;
+      }
+      updateFormGenderUI();
+
+      document.getElementById('formParentId').value = m.parentId || 'ROOT_PATERNAL';
+      document.getElementById('formOrder').value = m.order || '';
+
+      document.getElementById('formName').value = m.name || '';
+      document.getElementById('formHonorific').value = m.honorific || '';
+      document.getElementById('formBirth').value = m.birth || '';
+      document.getElementById('formDeath').value = m.death || '';
+      document.getElementById('formAnniversary').value = m.anniversary || '';
+
+      document.getElementById('formSpouse').value = m.spouse || '';
+      document.getElementById('formSpouseHonorific').value = m.spouseHonorific || '';
+      document.getElementById('formSpouseBirth').value = m.spouseBirth || '';
+      document.getElementById('formSpouseDeath').value = m.spouseDeath || '';
+      document.getElementById('formSpouseAnni').value = m.spouseAnni || '';
+
+      document.getElementById('formBurial').value = m.burial || '';
+      document.getElementById('formBio').value = m.bio || '';
+      openModal('editModal');
+    }
+
+    function saveMember(e) {
+      e.preventDefault();
+      if (!isAdmin) return;
+      const id = document.getElementById('formId').value || ('id_' + Date.now());
+      const isFemale = document.getElementById('genderRadioFemale').checked;
+
+      const item = {
+        id: id,
+        name: document.getElementById('formName').value.trim(),
+        gender: isFemale ? 'female' : 'male',
+        honorific: document.getElementById('formHonorific').value.trim(),
+        order: document.getElementById('formOrder').value.trim(),
+        parentId: document.getElementById('formParentId').value,
+        birth: document.getElementById('formBirth').value.trim(),
+        death: document.getElementById('formDeath').value.trim(),
+        anniversary: document.getElementById('formAnniversary').value.trim(),
+
+        spouse: document.getElementById('formSpouse').value.trim(),
+        spouseHonorific: document.getElementById('formSpouseHonorific').value.trim(),
+        spouseBirth: document.getElementById('formSpouseBirth').value.trim(),
+        spouseDeath: document.getElementById('formSpouseDeath').value.trim(),
+        spouseAnni: document.getElementById('formSpouseAnni').value.trim(),
+
+        burial: document.getElementById('formBurial').value.trim(),
+        bio: document.getElementById('formBio').value.trim()
+      };
+
+      const idx = mainMembers.findIndex(x => x.id === id);
+      if (idx >= 0) mainMembers[idx] = item;
+      else mainMembers.push(item);
+
+      saveData();
+      closeModal('editModal');
+      renderMainTree();
+      renderTable();
+      renderAnniversaries();
+      updateAncestorUI();
+      alert('Đã lưu thông tin thành công!');
+    }
+
+    function deleteMember(id) {
+      if (!isAdmin) return openLoginModal();
+      const m = mainMembers.find(x => x.id === id);
+      if (!m) return;
+      if (confirm(`Bạn có chắc muốn xóa: ${m.name}?`)) {
+        mainMembers = mainMembers.filter(x => x.id !== id);
+        mainMembers.forEach(c => { if (c.parentId === id) c.parentId = m.parentId || 'ROOT_PATERNAL'; });
+        if (currentViewingRootId === id) currentViewingRootId = DEFAULT_ROOT_ID;
+        saveData();
+        renderMainTree();
+        renderTable();
+        renderAnniversaries();
+        updateAncestorUI();
+        alert('Đã xóa thành công!');
+      }
+    }
+
+    function confirmResetAll() {
+      if (!isAdmin) return openLoginModal();
+      const ans = prompt("Nhập 'XOA' để xóa trắng cây chính và làm lại từ đầu:");
+      if (ans && ans.trim().toUpperCase() === 'XOA') {
+        mainMembers = [];
+        currentViewingRootId = "1";
+        saveData();
+        renderMainTree();
+        renderTable();
+        renderAnniversaries();
+        alert('Đã xóa trắng! Hãy bấm "Thêm người" để tạo phả hệ mới.');
+        openAddMemberModal();
+      }
+    }
+
+    function openEditAncestorLevel(branch) {
+      if (!isAdmin) return openLoginModal();
+      document.getElementById('ancBranchType').value = branch;
+      const isPaternal = branch === 'paternal';
+      const target = isPaternal ? ancestors.paternal : ancestors.maternal;
+
+      document.getElementById('ancestorFormTitle').textContent = isPaternal ? "Sửa Thông Tin Cụ Cố Bên Nội" : "Sửa Thông Tin Cụ Ngoại";
+      document.getElementById('ancLabelFather').textContent = isPaternal ? "🔴 CỤ CỐ ÔNG (BÊN NỘI)" : "🔴 CỤ ÔNG NGOẠI";
+      document.getElementById('ancLabelMother').textContent = isPaternal ? "🟢 CỤ CỐ BÀ (BÊN NỘI)" : "🟢 CỤ BÀ NGOẠI";
+
+      document.getElementById('ancFatherName').value = target.father.name;
+      document.getElementById('ancFatherHonorific').value = target.father.honorific || '';
+      document.getElementById('ancFatherYears').value = target.father.years;
+      document.getElementById('ancFatherAnni').value = target.father.anniversary || '';
+
+      document.getElementById('ancMotherName').value = target.mother.name;
+      document.getElementById('ancMotherHonorific').value = target.mother.honorific || '';
+      document.getElementById('ancMotherYears').value = target.mother.years;
+      document.getElementById('ancMotherAnni').value = target.mother.anniversary || '';
+
+      openModal('editAncestorModal');
+    }
+
+    function saveAncestorLevel(e) {
+      e.preventDefault();
+      const branch = document.getElementById('ancBranchType').value;
+      const target = branch === 'paternal' ? ancestors.paternal : ancestors.maternal;
+
+      target.father.name = document.getElementById('ancFatherName').value.trim();
+      target.father.honorific = document.getElementById('ancFatherHonorific').value.trim();
+      target.father.years = document.getElementById('ancFatherYears').value.trim();
+      target.father.anniversary = document.getElementById('ancFatherAnni').value.trim();
+
+      target.mother.name = document.getElementById('ancMotherName').value.trim();
+      target.mother.honorific = document.getElementById('ancMotherHonorific').value.trim();
+      target.mother.years = document.getElementById('ancMotherYears').value.trim();
+      target.mother.anniversary = document.getElementById('ancMotherAnni').value.trim();
+
+      saveData();
+      closeModal('editAncestorModal');
+      updateAncestorUI();
+      renderAnniversaries();
+      alert('Đã cập nhật thông tin Tiên Tổ!');
+    }
+
+    function renderTable() {
+      const tb = document.getElementById('tableBody');
+      if (!tb) return;
+      tb.innerHTML = '';
+      mainMembers.forEach(m => {
+        const isFemale = m.gender === 'female';
+        const genNumber = getMemberGeneration(m.id, DEFAULT_ROOT_ID);
+        tb.innerHTML += `
+          <tr>
+            <td><b>${m.id === DEFAULT_ROOT_ID ? "Cụ Ông - Cụ Bà" : "Đời " + genNumber}</b></td>
+            <td>${m.order || (isFemale ? 'Con gái' : 'Con trai')}</td>
+            <td style="color: ${isFemale ? '#BE123C' : '#991B1B'}; font-weight: bold; cursor: pointer;" onclick="clickMainTreeNode('${m.id}')">
+              ${isFemale ? '🌸' : '🔴'} ${m.name} <small>(${m.honorific || (isFemale ? 'Con gái' : 'Con trai')})</small>
+            </td>
+            <td style="color: #047857; font-weight: bold; cursor: pointer;" onclick="clickMainTreeNode('${m.id}')">
+              🟢 ${m.spouse || '—'} <small>(${m.spouseHonorific || (isFemale ? 'Rể' : 'Dâu')})</small>
+            </td>
+            <td>
+              Trong họ: ${m.birth || '?'} - ${m.death || 'Sống'}<br>
+              Phối ngẫu: ${m.spouseBirth || '?'} - ${m.spouseDeath || 'Sống'}
+            </td>
+            <td>
+              ${m.anniversary ? `Giỗ: <b>${m.anniversary}</b><br>` : ''}
+              ${m.spouseAnni ? `Phối ngẫu: <b>${m.spouseAnni}</b>` : '—'}
+            </td>
+            <td style="text-align: center;">
+              <button onclick="switchToBranch('${m.id}')" class="btn-node btn-filter-branch" style="display: inline-block;">🌿 Mở cây</button>
+              <button onclick="openEditMember('${m.id}')" class="btn-node btn-node-edit admin-only">✏️ Sửa</button>
+              <button onclick="deleteMember('${m.id}')" class="btn-node btn-node-del admin-only">🗑️</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderAnniversaries() {
+      const box = document.getElementById('anniversaryList');
+      if (!box) return;
+      box.innerHTML = '';
+      let list = [];
+
+      [ancestors.paternal.father, ancestors.paternal.mother, ancestors.maternal.father, ancestors.maternal.mother].forEach(anc => {
+        if (anc && anc.anniversary) list.push({ name: anc.name, role: anc.role, anniversary: anc.anniversary, color: '#B45309' });
+      });
+
+      mainMembers.forEach(m => {
+        const isFemale = m.gender === 'female';
+        const roleTitle = m.id === DEFAULT_ROOT_ID ? "Cụ Ông" : (m.honorific || (isFemale ? "Con gái" : "Con trai"));
+        if (m.anniversary) list.push({ name: m.name, role: roleTitle, anniversary: m.anniversary, color: isFemale ? '#BE123C' : '#991B1B' });
+        const spouseRoleTitle = m.id === DEFAULT_ROOT_ID ? "Cụ Bà" : (m.spouseHonorific || (isFemale ? "Rể" : "Dâu"));
+        if (m.spouse && m.spouseAnni) list.push({ name: m.spouse, role: spouseRoleTitle, anniversary: m.spouseAnni, color: '#047857' });
+      });
+
+      if (list.length === 0) {
+        box.innerHTML = '<div style="grid-column: span 2; text-align: center; color: #9CA3AF;">Chưa có lịch giỗ nào.</div>';
+        return;
+      }
+
+      list.forEach(m => {
+        box.innerHTML += `
+          <div style="background: #FCFAF7; border: 1px solid #D9CBB8; border-radius: 8px; padding: 12px; display: flex; gap: 10px; align-items: center;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: ${m.color}; color: white; display: flex; align-items: center; justify-content: center; font-size: 16px;">🎗️</div>
+            <div>
+              <div style="font-weight: bold; color: ${m.color}; font-size: 13px;">${m.name} <span style="font-size: 10px; background: #FEF3C7; color: #78350F; padding: 1px 4px; border-radius: 4px;">${m.role}</span></div>
+              <div style="font-size: 11px; font-weight: bold; margin-top: 2px;">🔔 Ngày giỗ: ${m.anniversary}</div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function switchTab(t) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tabs button').forEach(el => el.classList.remove('active'));
+      const activePane = document.getElementById('tabContent' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (activePane) activePane.classList.add('active');
+      document.getElementById('tab-btn-' + t).classList.add('active');
+
+      const workspace = document.querySelector('.app-workspace');
+      if (t === 'tree') {
+        workspace.style.display = 'flex';
+        resetZoom();
+      } else {
+        workspace.style.display = 'none';
+        if (t === 'table') renderTable();
+        if (t === 'anniversary') renderAnniversaries();
+      }
+    }
+
+    function exportJSON() {
+      const fullBackup = { title: document.getElementById('clanTitleText').textContent, mainTree: mainMembers, ancestors: ancestors };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullBackup, null, 2));
+      const a = document.createElement('a');
+      a.href = dataStr;
+      a.download = `giapha_ho_bach_${Date.now()}.json`;
+      a.click();
+    }
+
+    function openLoginModal() {
+      document.getElementById('loginPassInput').value = '';
+      document.getElementById('loginError').style.display = 'none';
+      openModal('loginModal');
+    }
+    function handleAdminLogin(e) {
+      e.preventDefault();
+      if (document.getElementById('loginPassInput').value === getPass()) {
+        isAdmin = true;
+        closeModal('loginModal');
+        applyRole();
+        alert('Đăng nhập Quản trị viên thành công!');
+      } else {
+        document.getElementById('loginError').style.display = 'block';
+      }
+    }
+    function logoutAdmin() {
+      if (confirm('Thoát quyền Quản trị?')) {
+        isAdmin = false;
+        applyRole();
+      }
+    }
+    function openChangePassModal() {
+      document.getElementById('oldPassInput').value = '';
+      document.getElementById('newPassInput').value = '';
+      document.getElementById('changePassMsg').style.display = 'none';
+      openModal('changePassModal');
+    }
+    function handleChangePass(e) {
+      e.preventDefault();
+      const oldP = document.getElementById('oldPassInput').value;
+      const newP = document.getElementById('newPassInput').value;
+      const msg = document.getElementById('changePassMsg');
+      if (oldP !== getPass()) {
+        msg.style.display = 'block'; msg.style.color = 'red'; msg.textContent = 'Mật khẩu cũ không đúng!';
+        return;
+      }
+      localStorage.setItem(KEY_PASS, newP);
+      msg.style.display = 'block'; msg.style.color = 'green'; msg.textContent = 'Đã lưu mật khẩu mới!';
+      setTimeout(() => closeModal('changePassModal'), 1000);
+    }
+
+    document.getElementById('btnEditClanTitle').onclick = () => {
+      if (!isAdmin) return openLoginModal();
+      const cur = document.getElementById('clanTitleText').textContent;
+      const v = prompt("Đổi tên gia phả:", cur);
+      if (v) {
+        document.getElementById('clanTitleText').textContent = v;
+        localStorage.setItem(KEY_TITLE, v);
+      }
+    };
+
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    window.onload = () => {
+      loadData();
+      applyRole();
+    };
+  </script>
+</body>
+</html>
